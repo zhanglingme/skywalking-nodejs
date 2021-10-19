@@ -117,6 +117,17 @@ class HttpPlugin implements SwPlugin {
 
         const req: ClientRequest = _request.apply(this, arguments);
 
+        span.inject().items.forEach((item) => {
+          // 解决s3 大图上传返回多次时，无法上传的问题
+          let hostNamePart = process.env.APOLLO_S3_BUCKET;
+          const symbolKey = Reflect.ownKeys(req).find(key => key.toString() === 'Symbol(kOutHeaders)');
+          const host = req.host || req[symbolKey].host;
+          if(host.includes(hostNamePart)) {
+              return true
+          }
+          return req.setHeader(item.key, item.value);
+        });
+
         span.inject().items.forEach((item) => req.setHeader(item.key, item.value));
 
         wrapEmit(span, req, true, 'close');
